@@ -4,8 +4,8 @@ import re
 from pigrate import internal
 
 
-def _shrink(text):
-    return re.sub(r'\s+', ' ', text).strip()
+def _is_blank(text):
+	return text is None or not bool(text.strip())
 
 
 def _split_sql(sql, delimiter=';'):
@@ -13,8 +13,7 @@ def _split_sql(sql, delimiter=';'):
     result = []
 
     def append_statement(statement):
-        statement = _shrink(statement)
-        if statement:
+        if not _is_blank(statement):
             result.append(statement)
 
     is_in_single_string = False
@@ -44,6 +43,7 @@ def _split_sql(sql, delimiter=';'):
 
 def dbapi(_driver, *args, **kwargs):
     OperationalError = getattr(_driver, 'OperationalError')
+    ProgrammingError = getattr(_driver, 'ProgrammingError')
 
     def execute_script(cur, script, delimiter=';'):
         statements = _split_sql(script, delimiter=delimiter)
@@ -65,14 +65,14 @@ def dbapi(_driver, *args, **kwargs):
             cur = conn.cursor()
             if not undo:
                 execute_script(cur, mig.script.up, delimiter=delimiter)
-                cur.execute(_shrink("""
-                    INSERT INTO _pig_status (id, applied_at) VALUES (?, ?);
-                """), (mig.id, internal.util.current_utc_millis()))
+                cur.execute("""
+                    INSERT INTO _pig_status (id, applied_at) VALUES ({id}, {applied_at});
+                """.format(id=mig.id, applied_at=internal.util.current_utc_millis()))
             else:
                 execute_script(cur, mig.script.down, delimiter=delimiter)
-                cur.execute(_shrink("""
-                    DELETE FROM _pig_status WHERE id = ?;
-                """), (mig.id, ))
+                cur.execute("""
+                    DELETE FROM _pig_status WHERE id = {id};
+                """.format(id=mig.id))
             conn.commit()
 
     def status():
@@ -85,25 +85,25 @@ def dbapi(_driver, *args, **kwargs):
                     id = int(row[0])
                     applied_at = int(row[1])
                     result.append(internal.PigrationStatus(id, applied_at))
-            except OperationalError as e:
+            except (OperationalError, ProgrammingError) as e:
                 return None # the table does not exist
         return result
 
     def pigratize():
         with connect() as conn:
-            conn.cursor().execute(_shrink("""
+            conn.cursor().execute("""
                 CREATE TABLE _pig_status (
-                    id INTEGER NOT NULL PRIMARY KEY,
-                    applied_at INTEGER NOT NULL
+                    id BIGINT NOT NULL PRIMARY KEY,
+                    applied_at BIGINT NOT NULL
                 );
-            """))
+            """)
             conn.commit()
 
     def unpigratize():
         with connect() as conn:
-            conn.cursor().execute(_shrink("""
+            conn.cursor().execute("""
                 DROP TABLE _pig_status;
-            """))
+            """)
             conn.commit()
 
     driver.status = status

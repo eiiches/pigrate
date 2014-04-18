@@ -2,7 +2,6 @@
 
 import os
 import time
-from datetime import datetime
 from pigrate import PigrateError, internal
 
 
@@ -119,7 +118,7 @@ def down(basedir, env, interactive=False):
             config.targets[mig.script.target](mig, undo=True)
         break
     else:
-        if raw_input("Nothing to undo. Would you like to remove '_pig_status' table? It is vital to pigrate. [N/y]: ").lower() in ("y", "yes"):
+        if raw_input("Nothing to undo. Would you like to remove '_pig_status' table? It is vital to pigrate. [y/N]: ").lower() in ("y", "yes"):
             for target_name, target_driver in config.targets.iteritems():
                 target_driver.unpigratize()
 
