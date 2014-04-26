@@ -12,7 +12,7 @@ class Pigration(object):
         self.script = script
 
     def __repr__(self):
-        return '{}-{}.pigrate.py'.format(self.id, self.name)
+        return '{0}-{1}.pigrate.py'.format(self.id, self.name)
 
 
 class PigrationStatus(object):
@@ -21,7 +21,7 @@ class PigrationStatus(object):
         self.applied_at = applied_at
 
     def __repr__(self):
-        return '{}'.format(self.id)
+        return '{0}'.format(self.id)
 
 
 def load_config_module(basedir):
@@ -29,7 +29,7 @@ def load_config_module(basedir):
     from uuid import uuid4
     config_path = os.path.join(basedir, 'config.py')
     if not os.path.isfile(config_path):
-        raise PigrateError("directory '{}' does not exists or is not a valid pigrate directory".format(basedir))
+        raise PigrateError("directory '{0}' does not exists or is not a valid pigrate directory".format(basedir))
     return imp.load_source(uuid4().get_hex(), os.path.join(basedir, 'config.py'))
 
 
@@ -49,7 +49,7 @@ def load_migrations(basedir):
             continue
         migration = Pigration(int(tokens[0]), '-'.join(tokens[1:]), imp.load_source(uuid4().get_hex(), os.path.join(basedir, filename)))
         if migration.id in result:
-            raise PigrateError("'{}' and '{}' have the same timestamp".format(migration, result[migration.id]))
+            raise PigrateError("'{0}' and '{1}' have the same timestamp".format(migration, result[migration.id]))
         result[migration.id] = migration
     return result
 
@@ -58,7 +58,7 @@ class util(object):
     @staticmethod
     def start_editor(fname):
         editor = os.environ.get('EDITOR', 'vi')
-        os.system('{} {}'.format(editor, fname))
+        os.system('{0} {1}'.format(editor, fname))
 
     @staticmethod
     def write_lines(fname, content):
@@ -67,5 +67,9 @@ class util(object):
 
     @staticmethod
     def current_utc_millis():
-        return int((datetime.utcnow() - datetime(1970, 1, 1, tzinfo=None)).total_seconds() * 1000)
+        return int(util.total_milliseconds(datetime.utcnow() - datetime(1970, 1, 1, tzinfo=None)))
+
+    @staticmethod
+    def total_milliseconds(delta):
+        return (delta.microseconds + (delta.seconds + delta.days * 24 * 3600) * 10**6) / 1000
 
